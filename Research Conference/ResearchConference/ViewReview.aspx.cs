@@ -8,32 +8,41 @@ using System.Data;
 using System.Data.SqlClient;
 using System.Configuration;
 using Newtonsoft.Json;
-using System.IO;
 using System.Collections;
 
 namespace ResearchConference
+
 {
     public partial class ViewReview : System.Web.UI.Page
     {
         SqlConnection dbConnection = new SqlConnection(ConfigurationManager.ConnectionStrings["RCMSConnectionString"].ConnectionString);
-
-        class ViewReviewEntity
+        class viewReviewController
         {
-            SqlConnection dbConnection2 = new SqlConnection(ConfigurationManager.ConnectionStrings["RCMSConnectionString"].ConnectionString);
-
-            int myUserID;
-
             public string PaperTitle { get; set; }
             public string PaperURL { get; set; }
+            int MyUserID; 
+
+            public SqlDataAdapter viewReviewTable(string getUserID)
+            {
+                SqlConnection dbConnections = new SqlConnection(ConfigurationManager.ConnectionStrings["RCMSConnectionString"].ConnectionString);
+                dbConnections.Open();
+                string currentSessionID = getUserID;
+                viewReviewEntity myEntity = new viewReviewEntity(); //Dont Make any sense if u mark, but you require BCE!.
+                string iDontUnderstandWhy = myEntity.getUserID(currentSessionID); //Dont make sense with BCE, slowing down the operation!
+                SqlDataAdapter SQLQuery = new SqlDataAdapter("Select PaperTitle,URL from paper where useridposted = " + iDontUnderstandWhy, dbConnections);
+                dbConnections.Close();
+                return SQLQuery;
+            }
 
             ArrayList ALPaperTitle = new ArrayList();
             public ArrayList tryOutNewLogic(int currentUserSessionID)
             {
-                dbConnection2.Open();
-                myUserID = currentUserSessionID;
+                SqlConnection dbConnections = new SqlConnection(ConfigurationManager.ConnectionStrings["RCMSConnectionString"].ConnectionString);
+                dbConnections.Open();
+                MyUserID = currentUserSessionID;
                 ArrayList returnedPaperTitle = new ArrayList();
-                string getPaperTitleSQL = "Select PaperTitle from Paper where useridposted=" + myUserID;
-                SqlCommand command = new SqlCommand(getPaperTitleSQL, dbConnection2);
+                string getPaperTitleSQL = "Select PaperTitle from Paper where useridposted=" + MyUserID;
+                SqlCommand command = new SqlCommand(getPaperTitleSQL, dbConnections);
                 using (SqlDataReader reader = command.ExecuteReader())
                 {
                     while (reader.Read())
@@ -41,16 +50,19 @@ namespace ResearchConference
                         ALPaperTitle.Add((string)reader["PaperTitle"]);
                     }
                 }
+                dbConnections.Close();
                 return ALPaperTitle;
             }
 
             ArrayList ALPaperURL = new ArrayList();
             public ArrayList tryOutNewLogic1(int currentUserSessionID)
             {
-                myUserID = currentUserSessionID;
+                SqlConnection dbConnections = new SqlConnection(ConfigurationManager.ConnectionStrings["RCMSConnectionString"].ConnectionString);
+                dbConnections.Open();
+                MyUserID = currentUserSessionID;
                 ArrayList returnedPaperTitle = new ArrayList();
-                string getPaperURLSQL = "Select URL from Paper where useridposted=" + myUserID;
-                SqlCommand command = new SqlCommand(getPaperURLSQL, dbConnection2);
+                string getPaperURLSQL = "Select URL from Paper where useridposted=" + MyUserID;
+                SqlCommand command = new SqlCommand(getPaperURLSQL, dbConnections);
                 using (SqlDataReader reader = command.ExecuteReader())
                 {
                     while (reader.Read())
@@ -58,96 +70,66 @@ namespace ResearchConference
                         ALPaperURL.Add((string)reader["URL"]);
                     }
                 }
+                dbConnections.Close();
                 return ALPaperURL;
             }
 
-            public string getPaperTitle(int currentUserSessionID)
-            {
-                myUserID = currentUserSessionID;
-                string getPaperTitleSQL = "Select PaperTitle from Paper where useridposted=" + myUserID;
-                SqlCommand displayResult = new SqlCommand(getPaperTitleSQL, dbConnection2);
-                string retrievePaperTitle = displayResult.ExecuteScalar().ToString();
-                return retrievePaperTitle;
-            }
-
-            public string getPaperURL(int currentUserSessionID)
-            {
-                myUserID = currentUserSessionID;
-                string getPaperTitleSQL = "Select URL from Paper where useridposted=" + myUserID;
-                SqlCommand displayResult = new SqlCommand(getPaperTitleSQL, dbConnection2);
-                string retrievePaperURL = displayResult.ExecuteScalar().ToString();
-                return retrievePaperURL;
-            }
-
-
-
         }
-        //SqlConnection dbConnection = new SqlConnection(ConfigurationManager.ConnectionStrings["RCMSConnectionString"].ConnectionString);
-        //string dbConnection = @"Data Source=DESKTOP-0R2NCQ5;Initial Catalog = RCMS; Integrated Security = True";
+
+        class viewReviewEntity
+        {
+            public string getUserID(string fromControllerUserID)
+            {
+                string currentSessionID = fromControllerUserID;
+                return currentSessionID;
+            }
+        }
         protected void Page_Load(object sender, EventArgs e)
         {
-            JsonSerializer serializer = new JsonSerializer();
-            ViewReviewEntity entity = new ViewReviewEntity();
-            int SessionUserID = int.Parse(Session["UserID"].ToString());
-            var myArrayList = entity.tryOutNewLogic(SessionUserID);
-            var myArrayList1 = entity.tryOutNewLogic1(SessionUserID);
-
-            var myJSON = new ArrayList();
-            for (int i =0; i < myArrayList.Count; i++)
-            {
-                    string myOutput = myArrayList[i].ToString();
-                    string myOutput1 = myArrayList1[i].ToString();
-                    var JSONArray = new ViewReviewEntity()
-                    {
-                        PaperTitle = myOutput,
-                        PaperURL = myOutput1
-                    };
-                    myJSON.Add(JSONArray);
-            }
-            var PostJSON = JsonConvert.SerializeObject(myJSON);
-            Response.Write(PostJSON);
-
-            //string myPaperTitle = entity.tryOutNewLogic(SessionUserID.ToString());
-            //string myPaperURL = entity.getPaperURL(SessionUserID);
-            //string JSONString = myPaperTitle + myPaperURL;
-            //var JSONArray = new ViewReviewEntity()
-            //{
-            //  PaperTitle = myPaperTitle,
-            //PaperURL = myPaperURL
-
-            //};
-
-
-            //string filePath = @"C:\Users\Eric\Desktop\JSONOutput\JSON1.txt";
-            //using (var sw = new StreamWriter(filePath))
-            //using (JsonWriter writer = new JsonTextWriter(sw))
-            //{
-            //  serializer.Deserialize(writer, JSONString);
-            //}
-
-
             if (Session["UserID"] == null)
             {
                 Response.Redirect("ReviewerLogin.aspx");
             }
             else
             {
-
-                using (dbConnection)
+                if (int.Parse(Session["roleid"].ToString()) == 3)
                 {
-                    string currentSessionUserID = Session["UserID"].ToString();
                     dbConnection.Open();
-                    SqlDataAdapter sqlda = new SqlDataAdapter("SELECT Allocation.AllocationID, Allocation.PaperID,  Allocation.UserID,Users.Name, Allocation.GradeID, Paper.Date, Paper.PaperTitle, Paper.URL, Allocation.PaperID as session FROM (Allocation  INNER JOIN Paper ON Allocation.PaperID = Paper.PaperID) INNER JOIN USERS on Allocation.UserID = Users.UserID where Allocation.UserID = " + currentSessionUserID  , dbConnection);
-
-                    DataTable dtbl = new DataTable();
-                    sqlda.Fill(dtbl);
-                    GridView2.DataSource = dtbl;
-                    GridView2.DataBind();
-
-                    if(dtbl.Rows.Count == 0)
+                    string myUserID = Session["UserID"].ToString();
+                    viewReviewController createTable = new viewReviewController();
+                    DataTable myDataTable = new DataTable();
+                    using (dbConnection)
                     {
-                        Label3.Text = "No paper assigned to you";
+                        createTable.viewReviewTable(myUserID).Fill(myDataTable);
+                        GridView2.DataSource = myDataTable;
+                        GridView2.DataBind();
+                        dbConnection.Close();
                     }
+
+                    JsonSerializer serializer = new JsonSerializer();
+                    viewReviewController entity = new viewReviewController();
+                    int SessionUserID = int.Parse(Session["UserID"].ToString());
+                    var myArrayList = entity.tryOutNewLogic(SessionUserID);
+                    var myArrayList1 = entity.tryOutNewLogic1(SessionUserID);
+
+                    var myJSON = new ArrayList();
+                    for (int i = 0; i < myArrayList.Count; i++)
+                    {
+                        string myOutput = myArrayList[i].ToString();
+                        string myOutput1 = myArrayList1[i].ToString();
+                        var JSONArray = new viewReviewController()
+                        {
+                            PaperTitle = myOutput,
+                            PaperURL = myOutput1
+                        };
+                        myJSON.Add(JSONArray);
+                    }
+                    var PostJSON = JsonConvert.SerializeObject(myJSON);
+                    Response.Write(PostJSON);
+                }
+                else
+                {
+                    Label3.Text = "Why are you here? You are not reviewer!";
                 }
             }
 
